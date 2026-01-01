@@ -1,0 +1,129 @@
+<!-- popup.html -->
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>V2B</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🎙️</div>
+        <div>
+          <div class="title">V2B</div>
+          <div class="subtitle">Деловое письмо онлайн</div>
+        </div>
+      </div>
+
+      <button class="iconBtn" id="help" aria-label="Памятка" title="Памятка">ℹ️</button>
+    </header>
+
+    <main class="main">
+      <!-- Управление -->
+      <section class="card">
+        <div class="cardTop">
+          <div class="cardTitle">Управление</div>
+          <div class="hint" id="hint">Нажмите «Начать» и говорите.</div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btnPrimary" id="start">
+            <span class="btnIcon">●</span>
+            <span>Начать</span>
+          </button>
+
+          <button class="btn btnGhost" id="stop" disabled>
+            <span class="btnIcon">■</span>
+            <span>Стоп</span>
+          </button>
+        </div>
+
+        <div class="metaRow">
+          <div class="meta">Микрофон: <b id="micState">не проверен</b></div>
+          <div class="meta">STT: <b id="sttState">не проверен</b></div>
+        </div>
+      </section>
+
+      <!-- Получить письмо -->
+      <section class="card">
+        <button class="btn btnPrimary btnWide" id="draft">
+          <span class="btnIcon">✉️</span>
+          <span>Получить письмо</span>
+        </button>
+      </section>
+
+      <!-- Письмо -->
+      <section class="card">
+        <div class="cardTop">
+          <div class="cardTitle">Письмо</div>
+          <!-- Здесь показываем тему -->
+          <div class="hint" id="subjectHint">Тема появится здесь</div>
+        </div>
+
+        <textarea id="text" class="textarea" placeholder="Текст письма появится здесь…"></textarea>
+
+        <div class="textActions">
+          <button class="btn btnGhost" id="copy">
+            <span class="btnIcon">⧉</span>
+            <span>Копировать</span>
+          </button>
+
+          <button class="btn btnGhost" id="clear">
+            <span class="btnIcon">⌫</span>
+            <span>Очистить</span>
+          </button>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Модалка памятки -->
+  <div class="modal hidden" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modalBackdrop" id="helpClose"></div>
+
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle" id="helpTitle">Памятка</div>
+        <button class="modalX" id="helpX" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="modalH">Чтобы письмо получилось точным, продиктуйте:</div>
+        <ul class="modalList">
+          <li><b>Кому</b> пишем</li>
+          <li><b>Цель</b> письма</li>
+          <li><b>Контекст</b> (о чём договорились / что произошло)</li>
+          <li><b>Что нужно</b> от получателя (следующий шаг)</li>
+          <li><b>Срок</b> (когда нужно)</li>
+          <li><b>Детали</b> (даты/суммы/номера)</li>
+        </ul>
+
+        <div class="modalH">Пример:</div>
+        <pre class="modalExample">Нужно письмо в бухгалтерию ООО «Ромашка».
+Попросить закрывающие документы за октябрь: акт и счет-фактуру.
+Оплата по счету №123 от 02.10.2025.
+Выслать на [email], желательно до пятницы.
+Подпись: Алексей, ООО «Альфа».</pre>
+
+        <div class="modalHint">Если данных не хватает — будут плейсхолдеры в [квадратных скобках].</div>
+      </div>
+
+      <div class="modalFooter">
+        <button class="btn btnGhost btnWide" id="helpOk">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Тема -->
+  <button class="themeBtn" id="themeBtn" aria-label="Переключить тему" title="Тема">
+    <span id="themeIcon">🌙</span>
+  </button>
+
+  <script src="popup.js"></script>
+</body>
+</html>

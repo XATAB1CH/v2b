@@ -1,0 +1,26 @@
+<!-- permission.html -->
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Микрофон</title>
+  <link rel="stylesheet" href="permission.css" />
+</head>
+<body>
+  <main class="wrap">
+    <div class="title">Доступ к микрофону</div>
+    <div class="text" id="status">Нажмите кнопку — появится системный запрос.</div>
+
+    <button class="btn" id="grant">Разрешить</button>
+
+    <div class="fine">Мы не записываем звук на этом шаге.</div>
+  </main>
+
+  <button class="themeBtn" id="themeBtn" aria-label="Переключить тему" title="Тема">
+    <span id="themeIcon">🌙</span>
+  </button>
+
+  <script src="permission.js"></script>
+</body>
+</html>

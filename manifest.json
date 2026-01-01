@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Mic → Text (Modern)",
+  "version": "2.0.0",
+  "description": "Современное расширение: запись с микрофона + вывод распознанного текста. Разрешение запрашивается в отдельном мини-окне.",
+  "action": {
+    "default_title": "Mic → Text",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["storage"]
+}
