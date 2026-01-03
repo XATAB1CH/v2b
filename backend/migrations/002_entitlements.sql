@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS entitlements (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  free_attempts_left INT NOT NULL DEFAULT 10,
+  paid_until TIMESTAMPTZ NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

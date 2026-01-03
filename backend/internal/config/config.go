@@ -21,6 +21,21 @@ type Config struct {
 	HTTPTimeout time.Duration
 
 	CORSAllowOrigins []string
+
+	// Postgres
+	DatabaseURL string
+
+	// JWT
+	JWTAccessSecret  string
+	JWTAccessTTLMins int
+
+	// OTP
+	OTPTTLMins     int
+	OTPCodeLength  int
+	OTPMaxAttempts int
+
+	FreeAttemptsLimit        int
+	SubscriptionDurationDays int
 }
 
 func Load() Config {
@@ -33,10 +48,21 @@ func Load() Config {
 		OpenAIKey:   os.Getenv("OPENAI_API_KEY"),
 		OpenAIModel: getenv("OPENAI_MODEL", "gpt-4o-mini"),
 		OpenAIBase:  getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-
 		HTTPTimeout: time.Duration(getenvInt("HTTP_TIMEOUT_SECONDS", 45)) * time.Second,
 
 		CORSAllowOrigins: parseCSV(getenv("CORS_ALLOW_ORIGINS", "*")),
+
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+
+		JWTAccessSecret:  os.Getenv("JWT_ACCESS_SECRET"),
+		JWTAccessTTLMins: getenvInt("JWT_ACCESS_TTL_MINUTES", 15),
+
+		OTPTTLMins:     getenvInt("OTP_TTL_MINUTES", 10),
+		OTPCodeLength:  getenvInt("OTP_CODE_LENGTH", 6),
+		OTPMaxAttempts: getenvInt("OTP_MAX_ATTEMPTS", 5),
+
+		FreeAttemptsLimit:        getenvInt("FREE_ATTEMPTS_LIMIT", 10),
+		SubscriptionDurationDays: getenvInt("SUBSCRIPTION_DURATION_DAYS", 30),
 	}
 }
 
