@@ -1,27 +1,50 @@
 package middleware
 
 import (
+	"strings"
 	"time"
 
+	"github.com/XATAB1CH/v2b/internal/config"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	"github.com/XATAB1CH/v2b/internal/config"
 )
 
+// CORS middleware using gin-contrib/cors (safe: does NOT read request body).
 func CORS(cfg config.Config) gin.HandlerFunc {
+	origins := normalizeOrigins(cfg.CORSAllowOrigins)
+
 	c := cors.Config{
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowMethods: []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders: []string{"Content-Type", "Authorization"},
 		MaxAge:       12 * time.Hour,
 	}
 
-	// Если в env указано "*", разрешаем все origin’ы
-	if len(cfg.CORSAllowOrigins) == 1 && cfg.CORSAllowOrigins[0] == "*" {
+	// Special case: allow all
+	if len(origins) == 1 && origins[0] == "*" {
 		c.AllowAllOrigins = true
 	} else {
-		c.AllowOrigins = cfg.CORSAllowOrigins
+		c.AllowOrigins = origins
 	}
 
 	return cors.New(c)
+}
+
+func normalizeOrigins(in []string) []string {
+	if len(in) == 0 {
+		return []string{"*"}
+	}
+
+	// if config already parsed list -> just trim
+	out := make([]string, 0, len(in))
+	for _, o := range in {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		out = append(out, o)
+	}
+	if len(out) == 0 {
+		return []string{"*"}
+	}
+	return out
 }

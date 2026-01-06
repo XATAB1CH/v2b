@@ -1,4 +1,4 @@
-// popup.js — SAFE + Subject в шапке
+// popup.js — SAFE + Subject в шапке + Profile/Paywall + Login(OTP) + /api/me gating
 
 const $ = (id) => document.getElementById(id);
 const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
@@ -27,25 +27,109 @@ const helpClose = $('helpClose');
 const helpX = $('helpX');
 const helpOk = $('helpOk');
 
+// ===== New UI: Profile + Paywall + Draft Status =====
+const profileBtn = $('profile');
+const profileModal = $('profileModal');
+const profileClose = $('profileClose');
+const profileX = $('profileX');
+const profileEmailEl = $('profileEmail');
+const profileStatusEl = $('profileStatus');
+const profileAttemptsRow = $('profileAttemptsRow');
+const profileAttemptsEl = $('profileAttempts');
+const profileBuyBtn = $('profileBuy');
+const logoutBtn = $('logoutBtn');
+
+const paywallModal = $('paywallModal');
+const paywallClose = $('paywallClose');
+const paywallX = $('paywallX');
+const paywallBuyBtn = $('paywallBuy');
+const paywallLaterBtn = $('paywallLater');
+
+const draftStatusEl = $('draftStatus');
+
+// ===== Login Modal (OTP) =====
+const loginModal = $('loginModal');
+const loginClose = $('loginClose');
+const loginX = $('loginX');
+const loginCancel = $('loginCancel');
+const loginEmail = $('loginEmail');
+const loginCode = $('loginCode');
+const loginSendCode = $('loginSendCode');
+const loginVerify = $('loginVerify');
+const loginHint = $('loginHint');
+
 let mediaStream = null;
 let mediaRecorder = null;
 let recognition = null;
 let finalText = "";
+
+// ===== API =====
+const API_BASE = 'http://localhost:8080';
+
+async function getToken() {
+  const obj = await chrome.storage.local.get('access_token');
+  return obj?.access_token || null;
+}
+async function setToken(token) {
+  await chrome.storage.local.set({ access_token: token });
+}
+async function clearToken() {
+  await chrome.storage.local.remove('access_token');
+}
+
+async function apiGetMe() {
+  const token = await getToken();
+  if (!token) throw new Error('no_token');
+
+  const resp = await fetch(`${API_BASE}/api/me`, {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `me error: ${resp.status}`);
+  }
+  return await resp.json();
+}
+
+async function apiRequestOTP(email) {
+  const resp = await fetch(`${API_BASE}/api/auth/otp/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `otp request error: ${resp.status}`);
+  }
+  return await resp.json().catch(() => ({}));
+}
+
+async function apiVerifyOTP(email, code) {
+  const resp = await fetch(`${API_BASE}/api/auth/otp/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `otp verify error: ${resp.status}`);
+  }
+  return await resp.json();
+}
 
 // ===== UI helpers =====
 function setText(el, text) {
   if (!el) return;
   el.textContent = text ?? '';
 }
-
 function toastMsg(msg) {
   setText(toastEl, msg || '');
 }
-
 function setHint(msg) {
   setText(hintEl, msg || '');
 }
-
 function setSubjectHint(text) {
   if (!subjectHintEl) return;
   subjectHintEl.textContent = text || 'Тема появится здесь';
@@ -98,8 +182,279 @@ on(helpBtn, 'click', openHelp);
 on(helpClose, 'click', closeHelp);
 on(helpX, 'click', closeHelp);
 on(helpOk, 'click', closeHelp);
+
+// ===== Login modal =====
+function openLogin() {
+  loginModal?.classList.remove('hidden');
+  setText(loginHint, "");
+  // удобнее сразу поставить фокус на email
+  setTimeout(() => loginEmail?.focus(), 0);
+}
+function closeLogin() {
+  loginModal?.classList.add('hidden');
+  setText(loginHint, "");
+}
+on(loginClose, 'click', closeLogin);
+on(loginX, 'click', closeLogin);
+on(loginCancel, 'click', closeLogin);
+
+// ===== Profile + Paywall modals =====
+function openProfile() { profileModal?.classList.remove('hidden'); }
+function closeProfile() { profileModal?.classList.add('hidden'); }
+function openPaywall() { paywallModal?.classList.remove('hidden'); }
+function closePaywall() { paywallModal?.classList.add('hidden'); }
+
+on(profileBtn, 'click', async () => {
+  const token = await getToken();
+  if (!token) {
+    openLogin();
+    return;
+  }
+  await refreshMe();
+  openProfile();
+});
+on(profileClose, 'click', closeProfile);
+on(profileX, 'click', closeProfile);
+
+on(paywallClose, 'click', closePaywall);
+on(paywallX, 'click', closePaywall);
+on(paywallLaterBtn, 'click', closePaywall);
+
+on(profileBuyBtn, 'click', () => {
+  closeProfile();
+  openPaywall();
+});
+
+on(paywallBuyBtn, 'click', async () => {
+  try {
+    paywallBuyBtn.disabled = true;
+    toastMsg('Создаю платеж…');
+
+    const token = await getToken();
+    if (!token) {
+      toastMsg('Нужно войти в аккаунт.');
+      closePaywall();
+      openLogin();
+      return;
+    }
+
+    const p = await apiCreatePayment();
+
+    // поддержим разные названия полей на всякий
+    const paymentId = p.payment_id || p.id || p.paymentID || p.paymentId;
+    const confirmationUrl = p.confirmation_url || p.confirmationUrl || p.url;
+
+    if (!paymentId) throw new Error('server did not return payment_id');
+
+    // DEV: сразу подтверждаем оплату
+    toastMsg('Подтверждаю платеж (DEV)…');
+    await apiMarkPaymentSucceeded(paymentId);
+
+    // обновляем /me, чтобы paid_until подтянулся
+    toastMsg('Активирую подписку…');
+    await refreshMe();
+
+    closePaywall();
+    toastMsg('Подписка активирована ✅');
+
+    // (опционально) если хочешь — можно открыть confirmationUrl в реальном сценарии:
+    // if (confirmationUrl) chrome.tabs.create({ url: confirmationUrl });
+  } catch (e) {
+    console.error(e);
+    toastMsg('Ошибка оплаты: ' + (e.message || 'unknown'));
+  } finally {
+    paywallBuyBtn.disabled = false;
+  }
+});
+
+on(logoutBtn, 'click', async () => {
+  await clearToken();
+  meCache = null;
+  closeProfile();
+  renderAccessStatus(null);
+  toastMsg('Вы вышли из аккаунта.');
+});
+
+// Payments
+async function apiCreatePayment() {
+  const token = await getToken();
+  if (!token) throw new Error('no_token');
+
+  const resp = await fetch(`${API_BASE}/api/billing/payments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      // если твой handler требует тело — оставь.
+      // если не требует — можно {}.
+      plan: 'subscription_30d'
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `billing error: ${resp.status}`);
+  }
+
+  return await resp.json();
+}
+
+async function apiMarkPaymentSucceeded(paymentId) {
+  const token = await getToken();
+  if (!token) throw new Error('no_token');
+
+  const resp = await fetch(`${API_BASE}/api/dev/payments/${encodeURIComponent(paymentId)}/mark-succeeded`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `mark-succeeded error: ${resp.status}`);
+  }
+
+  return await resp.json().catch(() => ({}));
+}
+
+
+// ESC closes the top-most modal (simple)
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && helpModal && !helpModal.classList.contains('hidden')) closeHelp();
+  if (e.key !== 'Escape') return;
+
+  if (loginModal && !loginModal.classList.contains('hidden')) return closeLogin();
+  if (paywallModal && !paywallModal.classList.contains('hidden')) return closePaywall();
+  if (profileModal && !profileModal.classList.contains('hidden')) return closeProfile();
+  if (helpModal && !helpModal.classList.contains('hidden')) return closeHelp();
+});
+
+// ===== Entitlements render (/me) =====
+let meCache = null;
+
+function renderAccessStatus(me) {
+  if (!draftStatusEl) return;
+  if (!me) { draftStatusEl.textContent = '—'; return; }
+
+  if (me.subscription_active) {
+    // если захочешь — можно добавить дату paid_until
+    draftStatusEl.textContent = 'Подписка активна';
+  } else {
+    const n = (me.free_attempts_left ?? 0);
+    draftStatusEl.textContent = `Осталось попыток: ${n}`;
+  }
+}
+
+function renderProfile(me) {
+  if (!me) return;
+
+  setText(profileEmailEl, me.email || '—');
+
+  if (me.subscription_active) {
+    setText(profileStatusEl, 'Подписка активна');
+    profileAttemptsRow?.classList.add('hidden');
+    if (profileBuyBtn) profileBuyBtn.textContent = 'Продлить подписку';
+  } else {
+    setText(profileStatusEl, 'Нет подписки');
+    profileAttemptsRow?.classList.remove('hidden');
+    setText(profileAttemptsEl, String(me.free_attempts_left ?? 0));
+    if (profileBuyBtn) profileBuyBtn.textContent = 'Купить подписку';
+  }
+}
+
+async function refreshMe() {
+  try {
+    const me = await apiGetMe();
+    meCache = me;
+    renderAccessStatus(me);
+    renderProfile(me);
+    return me;
+  } catch (e) {
+    renderAccessStatus(null);
+    return null;
+  }
+}
+
+// ===== Server call (draft-email) =====
+async function requestBusinessEmailFromServer(rawText) {
+  const token = await getToken();
+  if (!token) throw new Error('no_token');
+
+  const resp = await fetch(`${API_BASE}/api/draft-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text: rawText, lang: 'ru', tone: 'neutral', recipient: '', sender: '' })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `Server error: ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  if (!data?.email) throw new Error('Empty email in response');
+  return data.email;
+}
+
+// ===== Login logic =====
+on(loginSendCode, 'click', async () => {
+  const email = (loginEmail?.value || '').trim();
+  if (!email || !email.includes('@')) {
+    setText(loginHint, 'Введите корректный email.');
+    return;
+  }
+
+  loginSendCode.disabled = true;
+  setText(loginHint, 'Отправляю код…');
+
+  try {
+    await apiRequestOTP(email);
+    setText(loginHint, 'Код отправлен. Проверьте почту и введите код.');
+    setTimeout(() => loginCode?.focus(), 0);
+  } catch (e) {
+    setText(loginHint, 'Ошибка: ' + (e.message || 'unknown'));
+  } finally {
+    loginSendCode.disabled = false;
+  }
+});
+
+on(loginVerify, 'click', async () => {
+  const email = (loginEmail?.value || '').trim();
+  const code = (loginCode?.value || '').trim();
+
+  if (!email || !email.includes('@')) {
+    setText(loginHint, 'Введите корректный email.');
+    return;
+  }
+  if (!code || code.length < 4) {
+    setText(loginHint, 'Введите код из письма.');
+    return;
+  }
+
+  loginVerify.disabled = true;
+  setText(loginHint, 'Проверяю код…');
+
+  try {
+    const tok = await apiVerifyOTP(email, code);
+    if (!tok?.access_token) throw new Error('server did not return access_token');
+
+    await setToken(tok.access_token);
+
+    await refreshMe();
+    closeLogin();
+    toastMsg('Вы вошли в аккаунт.');
+  } catch (e) {
+    setText(loginHint, 'Ошибка: ' + (e.message || 'unknown'));
+  } finally {
+    loginVerify.disabled = false;
+  }
 });
 
 // ===== Speech Recognition =====
@@ -173,24 +528,6 @@ async function ensureMicPermission() {
     toastMsg('Разрешение не получено.');
     return false;
   }
-}
-
-// ===== Server call =====
-async function requestBusinessEmailFromServer(rawText) {
-  const resp = await fetch('http://localhost:8080/api/draft-email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: rawText, lang: 'ru', tone: 'neutral', recipient: '', sender: '' })
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error || `Server error: ${resp.status}`);
-  }
-
-  const data = await resp.json();
-  if (!data?.email) throw new Error('Empty email in response');
-  return data.email;
 }
 
 // ===== Recording =====
@@ -287,14 +624,38 @@ on(draftBtn, 'click', async () => {
     return;
   }
 
+  // if no token -> open login
+  const token = await getToken();
+  if (!token) {
+    toastMsg('Нужно войти в аккаунт.');
+    openLogin();
+    return;
+  }
+
   if (draftBtn) draftBtn.disabled = true;
   if (startBtn) startBtn.disabled = true;
   if (stopBtn) stopBtn.disabled = true;
 
   setHint('Формирую деловое письмо…');
-  toastMsg('Отправляю на сервер…');
+  toastMsg('Проверяю доступ…');
 
   try {
+    const me = await refreshMe();
+    if (!me) {
+      toastMsg('Нужно войти в аккаунт.');
+      openLogin();
+      return;
+    }
+
+    if (!me.subscription_active && (me.free_attempts_left ?? 0) <= 0) {
+      setHint('Закончились бесплатные попытки.');
+      toastMsg('Откройте подписку для продолжения.');
+      openPaywall();
+      return;
+    }
+
+    toastMsg('Отправляю на сервер…');
+
     const emailRaw = await requestBusinessEmailFromServer(raw);
     const { subject, body } = splitSubject(emailRaw);
 
@@ -303,6 +664,8 @@ on(draftBtn, 'click', async () => {
 
     setHint('Готово.');
     toastMsg('Письмо готово.');
+
+    await refreshMe();
   } catch (e) {
     console.error(e);
     setHint('Ошибка.');
@@ -323,4 +686,7 @@ on(draftBtn, 'click', async () => {
   setText(micStateEl, 'не проверен');
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   setText(sttStateEl, SR ? 'доступно' : 'не поддерживается');
+
+  // initial access status (if token already stored)
+  refreshMe();
 })();

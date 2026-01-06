@@ -34,6 +34,15 @@ type Config struct {
 	OTPCodeLength  int
 	OTPMaxAttempts int
 
+	// SMTP
+	SMTPHost      string
+	SMTPPort      int
+	SMTPUsername  string
+	SMTPPassword  string
+	SMTPFromEmail string
+	SMTPFromName  string
+	SMTPUseTLS    bool
+
 	FreeAttemptsLimit        int
 	SubscriptionDurationDays int
 }
@@ -60,6 +69,14 @@ func Load() Config {
 		OTPTTLMins:     getenvInt("OTP_TTL_MINUTES", 10),
 		OTPCodeLength:  getenvInt("OTP_CODE_LENGTH", 6),
 		OTPMaxAttempts: getenvInt("OTP_MAX_ATTEMPTS", 5),
+
+		SMTPHost:      getenv("SMTP_HOST", ""),
+		SMTPPort:      getenvInt("SMTP_PORT", 587),
+		SMTPUsername:  os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:  os.Getenv("SMTP_PASSWORD"),
+		SMTPFromEmail: os.Getenv("SMTP_FROM_EMAIL"),
+		SMTPFromName:  getenv("SMTP_FROM_NAME", "V2B"),
+		SMTPUseTLS:    strings.ToLower(getenv("SMTP_USE_TLS", "true")) == "true",
 
 		FreeAttemptsLimit:        getenvInt("FREE_ATTEMPTS_LIMIT", 10),
 		SubscriptionDurationDays: getenvInt("SUBSCRIPTION_DURATION_DAYS", 30),

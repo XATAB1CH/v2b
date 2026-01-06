@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"strings"
 
 	"github.com/XATAB1CH/v2b/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
@@ -17,17 +18,37 @@ func NewAuthHandler(svc *services.AuthService) *AuthHandler {
 }
 
 type OTPRequest struct {
-	Email string `json:"email"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 func (h *AuthHandler) RequestOTP(c *gin.Context) {
-	var req OTPRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad json"})
+	// Читаем raw body через Gin (он читает тело корректно)
+	raw, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "read body: " + err.Error()})
+		return
+	}
+	if len(raw) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty body"})
 		return
 	}
 
-	_, err := h.svc.RequestOTP(req.Email)
+	// Парсим JSON вручную
+	var req OTPRequest
+	if err := json.Unmarshal(raw, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "bad json: " + err.Error(),
+			"raw":   string(raw), // можно убрать позже
+		})
+		return
+	}
+
+	if strings.TrimSpace(req.Email) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
+		return
+	}
+
+	_, err = h.svc.RequestOTP(req.Email)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -37,14 +58,14 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 }
 
 type OTPVerifyRequest struct {
-	Email string `json:"email"`
-	Code  string `json:"code"`
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
 }
 
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req OTPVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad json"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

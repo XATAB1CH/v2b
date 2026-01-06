@@ -16,6 +16,7 @@ func NewEntitlementsService(repo *postgres.EntitlementsRepo) *EntitlementsServic
 }
 
 type Me struct {
+	Email              string     `json:"email"`
 	PaidUntil          *time.Time `json:"paid_until"`
 	SubscriptionActive bool       `json:"subscription_active"`
 	FreeAttemptsLeft   int        `json:"free_attempts_left"`
@@ -29,6 +30,7 @@ func (s *EntitlementsService) GetMe(ctx context.Context, userID string) (Me, err
 
 	active := e.PaidUntil != nil && e.PaidUntil.After(time.Now().UTC())
 	return Me{
+		Email:              e.Email,
 		PaidUntil:          e.PaidUntil,
 		SubscriptionActive: active,
 		FreeAttemptsLeft:   e.FreeAttemptsLeft,

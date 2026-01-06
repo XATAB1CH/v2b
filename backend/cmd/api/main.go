@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/XATAB1CH/v2b/internal/clients/mailer"
 	"github.com/XATAB1CH/v2b/internal/clients/openai"
 	"github.com/XATAB1CH/v2b/internal/clients/stubpay"
 	"github.com/XATAB1CH/v2b/internal/config"
@@ -18,6 +19,20 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	// __________ Mailer ________
+	var m mailer.Mailer
+	if cfg.SMTPHost != "" && cfg.SMTPFromEmail != "" {
+		m = mailer.NewSMTPMailer(mailer.SMTPConfig{
+			Host:      cfg.SMTPHost,
+			Port:      cfg.SMTPPort,
+			Username:  cfg.SMTPUsername,
+			Password:  cfg.SMTPPassword,
+			FromEmail: cfg.SMTPFromEmail,
+			FromName:  cfg.SMTPFromName,
+			UseTLS:    cfg.SMTPUseTLS,
+		})
+	}
 
 	// ---------- HTTP client ----------
 	httpClient := &http.Client{Timeout: cfg.HTTPTimeout}
@@ -56,6 +71,8 @@ func main() {
 		cfg.OTPCodeLength,
 		cfg.OTPMaxAttempts,
 		cfg.FreeAttemptsLimit,
+		m,
+		cfg.Env,
 	)
 
 	entSvc := services.NewEntitlementsService(entRepo)

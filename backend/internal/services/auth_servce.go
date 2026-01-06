@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/XATAB1CH/v2b/internal/clients/mailer"
 	"github.com/XATAB1CH/v2b/internal/store/memory"
 	"github.com/XATAB1CH/v2b/internal/store/postgres"
 )
@@ -26,6 +27,9 @@ type AuthService struct {
 	otpLen         int
 	otpMaxAttempts int
 
+	mailer mailer.Mailer
+	env    string
+
 	freeLimit int
 }
 
@@ -39,20 +43,21 @@ func NewAuthService(
 	otpLen int,
 	otpMaxAttempts int,
 	freeLimit int,
+	m mailer.Mailer,
+	env string,
 ) *AuthService {
 	return &AuthService{
-		otp:   otp,
-		users: users,
-		ent:   ent,
-
-		jwtSecret: []byte(jwtSecret),
-		accessTTL: time.Duration(accessTTLMins) * time.Minute,
-
+		otp:            otp,
+		users:          users,
+		ent:            ent,
+		jwtSecret:      []byte(jwtSecret),
+		accessTTL:      time.Duration(accessTTLMins) * time.Minute,
 		otpTTL:         time.Duration(otpTTLMins) * time.Minute,
 		otpLen:         otpLen,
 		otpMaxAttempts: otpMaxAttempts,
-
-		freeLimit: freeLimit,
+		freeLimit:      freeLimit,
+		mailer:         m,
+		env:            env,
 	}
 }
 
@@ -68,10 +73,21 @@ func (s *AuthService) RequestOTP(email string) (code string, err error) {
 
 	code = s.otp.Create(email, s.otpLen, s.otpTTL, s.otpMaxAttempts)
 
-	// DEV: пока без SMTP — логируем код
-	log.Printf("[DEV OTP] email=%s code=%s", email, code)
+	// local fallback: если SMTP не настроен — логируем
+	if s.mailer == nil {
+		if s.env == "local" {
+			log.Printf("[DEV OTP] email=%s code=%s", email, code)
+			return code, nil
+		}
+		return "", errors.New("mailer is not configured")
+	}
 
-	return code, nil
+	if err := s.mailer.SendOTP(context.Background(), email, code); err != nil {
+		return "", err
+	}
+
+	// В проде код не возвращаем (handler и так отвечает {ok:true})
+	return "", nil
 }
 
 type Tokens struct {

@@ -18,7 +18,10 @@
         </div>
       </div>
 
-      <button class="iconBtn" id="help" aria-label="Памятка" title="Памятка">ℹ️</button>
+      <div class="headerActions">
+        <button class="iconBtn" id="profile" aria-label="Профиль" title="Профиль">👤</button>
+        <button class="iconBtn" id="help" aria-label="Памятка" title="Памятка">ℹ️</button>
+      </div>
     </header>
 
     <main class="main">
@@ -49,10 +52,13 @@
 
       <!-- Получить письмо -->
       <section class="card">
-        <button class="btn btnPrimary btnWide" id="draft">
-          <span class="btnIcon">✉️</span>
-          <span>Получить письмо</span>
-        </button>
+        <div class="draftRow">
+          <button class="btn btnPrimary btnWide" id="draft">
+            <span class="btnIcon">✉️</span>
+            <span>Получить письмо</span>
+          </button>
+          <div class="draftStatus" id="draftStatus">Загрузка…</div>
+        </div>
       </section>
 
       <!-- Письмо -->
@@ -118,6 +124,105 @@
       </div>
     </div>
   </div>
+  
+  <!-- Модалка логина (OTP) -->
+  <div class="modal hidden" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="modalBackdrop" id="loginClose"></div>
+
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle" id="loginTitle">Вход</div>
+        <button class="modalX" id="loginX" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="modalHint">Введите почту — мы отправим код. Затем введите код и войдите.</div>
+
+        <label class="field">
+          <div class="fieldLabel">Email</div>
+          <input id="loginEmail" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+        </label>
+
+        <button class="btn btnPrimary btnWide" id="loginSendCode">Отправить код</button>
+
+        <label class="field">
+          <div class="fieldLabel">Код</div>
+          <input id="loginCode" class="input" type="text" inputmode="numeric" placeholder="123456" />
+        </label>
+
+        <button class="btn btnPrimary btnWide" id="loginVerify">Войти</button>
+
+        <div class="modalHint" id="loginHint"></div>
+      </div>
+
+      <div class="modalFooter">
+        <button class="btn btnGhost btnWide" id="loginCancel">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка профиля -->
+  <div class="modal hidden" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modalBackdrop" id="profileClose"></div>
+
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle" id="profileTitle">Профиль</div>
+        <button class="modalX" id="profileX" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="modalH">Аккаунт</div>
+        <div class="kv">
+          <div class="kvK">Email</div>
+          <div class="kvV" id="profileEmail">—</div>
+        </div>
+
+        <div class="modalH">Доступ</div>
+        <div class="kv">
+          <div class="kvK">Статус</div>
+          <div class="kvV" id="profileStatus">—</div>
+        </div>
+        <div class="kv" id="profileAttemptsRow">
+          <div class="kvK">Бесплатные попытки</div>
+          <div class="kvV" id="profileAttempts">—</div>
+        </div>
+
+        <button class="btn btnPrimary btnWide" id="profileBuy">Купить подписку</button>
+      </div>
+
+      <div class="modalFooter">
+        <button class="btn btnGhost btnWide" id="logoutBtn">Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка покупки (заглушка) -->
+  <div class="modal hidden" id="paywallModal" role="dialog" aria-modal="true" aria-labelledby="paywallTitle">
+    <div class="modalBackdrop" id="paywallClose"></div>
+
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle" id="paywallTitle">Подписка</div>
+        <button class="modalX" id="paywallX" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="modalHint">
+          Подписка на 30 дней, без автопродления. Открывает неограниченный доступ к генерации писем.
+        </div>
+
+        <div class="paywallBox">
+          <div class="paywallPrice">Цена: <b>[XXX ₽]</b></div>
+          <div class="paywallSmall">Оплата через ЮMoney/ЮKassa (скоро)</div>
+        </div>
+
+        <button class="btn btnPrimary btnWide" id="paywallBuy">Купить (заглушка)</button>
+        <button class="btn btnGhost btnWide" id="paywallLater">Позже</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Тема -->
   <button class="themeBtn" id="themeBtn" aria-label="Переключить тему" title="Тема">

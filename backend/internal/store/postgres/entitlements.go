@@ -11,6 +11,7 @@ type Entitlements struct {
 	UserID           string
 	FreeAttemptsLeft int
 	PaidUntil        *time.Time
+	Email            string
 }
 
 type EntitlementsRepo struct {
@@ -35,10 +36,16 @@ func (r *EntitlementsRepo) Get(ctx context.Context, userID string) (Entitlements
 	var paidUntil *time.Time
 
 	err := r.db.QueryRow(ctx, `
-		SELECT user_id, free_attempts_left, paid_until
-		FROM entitlements
-		WHERE user_id=$1
-	`, userID).Scan(&e.UserID, &e.FreeAttemptsLeft, &paidUntil)
+		SELECT
+			u.id AS user_id,
+			e.free_attempts_left,
+			e.paid_until,
+			u.email
+		FROM public.users u
+		LEFT JOIN public.entitlements e
+		ON e.user_id = u.id
+		WHERE u.id = $1
+	`, userID).Scan(&e.UserID, &e.FreeAttemptsLeft, &paidUntil, &e.Email)
 
 	if err != nil {
 		return Entitlements{}, err
